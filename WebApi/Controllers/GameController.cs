@@ -1,83 +1,64 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using WebApi.Database;
 
 namespace WebApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class GameController : ControllerBase
+    public class GameController(GameDBContext context) : ControllerBase
     {
-        static private List<Game> games = new List<Game>
-        {
-            new Game
-            {
-                Id = 1,
-                Title = "Spider-Man",
-                Platform = "PS5",
-                Developer = "Insomniac Games",
-                Publisher = "Sony Interactive"
-            },
-            new Game
-            {
-                Id = 2,
-                Title = "The Legen of Zelda",
-                Platform = "Nintenao Switch",
-                Developer = "Nintenao Games",
-                Publisher = "Nintenao"
-            },
-            new Game
-            {
-                Id = 3,
-                Title = "Cyberpunk",
-                Platform = "PS5",
-                Developer = "CD Project Games",
-                Publisher = "CD Project"
-            },
-        };
+        private readonly GameDBContext _context= context;
+
+
         [HttpGet]
-        public ActionResult<List<Game>> GetGame()
+        public async Task<ActionResult<List<Game>>> GetGame()
         {
-            return Ok(games);
+            return Ok(await _context.Games.ToListAsync());
         }
         [HttpGet("{id}")]
-        //[HttpGet - we can write separately as well
-        //[Route("{id}")]
-        public ActionResult<Game> GetGameById(int id)
+        public async Task<ActionResult<Game>> GetGameById(int id)
         {
-            var game = games.FirstOrDefault(g => g.Id == id);
+            var game = await _context.Games.FindAsync(id);
             if (game == null)
                 return NotFound();
             return Ok(game);
         }
         [HttpPost]
-        public ActionResult<Game> AddGame(Game newGame)
+        public async Task<ActionResult<Game>> AddGame(Game newGame)
         {
             if (newGame is null)
                 return BadRequest();
-            newGame.Id = games.Max(g => g.Id) + 1;
-            games.Add(newGame);
-            return CreatedAtAction(nameof(GetGameById), new { id = newGame.Id}, newGame);
+            _context.Games.Add(newGame);
+            await _context.SaveChangesAsync();
+            return CreatedAtAction(nameof(GetGameById), new { id = newGame.Id }, newGame);
         }
         [HttpPut("{id}")]
-        public IActionResult UpdateGame(int id, Game updateGame)
+        public async Task<IActionResult> UpdateGame(int id, Game updateGame)
         {
-            var game = games.FirstOrDefault(g => g.Id == id);
+            var game = await _context.Games.FindAsync(id);
             if (game == null)
                 return NotFound();
+
             game.Title = updateGame.Title;
             game.Platform = updateGame.Platform;
             game.Developer = updateGame.Developer;
             game.Publisher = updateGame.Publisher;
 
+            await _context.SaveChangesAsync();
+
             return NoContent();
         }
         [HttpDelete("{id}")]
-        public IActionResult DeleteGame(int id)
+        public async Task<IActionResult> DeleteGame(int id)
         {
-            var game = games.FirstOrDefault(g => g.Id == id);
+            var game = await _context.Games.FindAsync(id);
             if (game == null)
                 return NotFound();
-            games.Remove(game);
+            _context.Games.Remove(game);
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
